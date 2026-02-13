@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Product Category Predictor</title>
+
+<style>
+*{
+    box-sizing:border-box;
+    font-family:'Inter','Segoe UI',system-ui,sans-serif;
+}
+
+body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:
+        radial-gradient(circle at 20% 20%, #F3D18D66, transparent 40%),
+        radial-gradient(circle at 80% 80%, #742E1066, transparent 45%),
+        #FAE1B8;
+}
+
+/* floating accents */
+.blob{
+    position:absolute;
+    width:360px;
+    height:360px;
+    background:#F3D18D;
+    filter:blur(150px);
+    opacity:.35;
+    animation:float 18s infinite alternate ease-in-out;
+}
+.blob.b2{
+    background:#742E10;
+    animation-delay:-9s;
+}
+
+@keyframes float{
+    from{transform:translateY(-70px)}
+    to{transform:translateY(70px)}
+}
+
+/* card */
+.container{
+    position:relative;
+    width:480px;
+    padding:42px;
+    border-radius:28px;
+    background:rgba(255,255,255,.75);
+    backdrop-filter:blur(18px);
+    box-shadow:0 40px 80px rgba(116,46,16,.35);
+    animation:pop .8s ease;
+}
+
+@keyframes pop{
+    from{opacity:0;transform:translateY(30px) scale(.95)}
+    to{opacity:1;transform:translateY(0) scale(1)}
+}
+
+h1{
+    margin:0;
+    text-align:center;
+    font-size:28px;
+    color:#742E10;
+}
+
+.subtitle{
+    text-align:center;
+    margin:8px 0 30px;
+    font-size:13px;
+    color:#5c2a12;
+}
+
+/* inputs */
+.field{
+    position:relative;
+    margin-bottom:18px;
+}
+
+.field input{
+    width:100%;
+    padding:15px;
+    border-radius:16px;
+    border:1px solid #742E10;
+    background:#FFFBF3;
+    font-size:14px;
+    transition:.25s;
+}
+
+.field input:focus{
+    outline:none;
+    border-color:#742E10;
+    box-shadow:0 0 0 4px rgba(116,46,16,.25);
+}
+
+.field label{
+    position:absolute;
+    left:16px;
+    top:50%;
+    transform:translateY(-50%);
+    font-size:12px;
+    color:#742E10;
+    pointer-events:none;
+    transition:.25s;
+    background:#FFFBF3;
+    padding:0 6px;
+}
+
+.field input:focus + label,
+.field input:not(:placeholder-shown) + label{
+    top:-8px;
+    font-size:11px;
+}
+
+.field input[readonly]{
+    background:#FAE1B8;
+    color:#742E10;
+}
+
+/* buttons */
+.actions{
+    display:flex;
+    gap:14px;
+    margin-top:18px;
+}
+
+button{
+    flex:1;
+    padding:15px;
+    border:none;
+    border-radius:18px;
+    font-weight:700;
+    cursor:pointer;
+    font-size:14px;
+}
+
+.btn-reset{
+    background:#FAE1B8;
+    color:#742E10;
+}
+.btn-reset:hover{background:#F3D18D}
+
+.btn-predict{
+    background:linear-gradient(135deg,#742E10,#9c3d18);
+    color:#FAE1B8;
+    position:relative;
+    overflow:hidden;
+}
+.btn-predict.loading{
+    pointer-events:none;
+    opacity:.7;
+}
+.btn-predict::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:linear-gradient(
+        120deg,
+        transparent 30%,
+        rgba(255,255,255,.6),
+        transparent 70%
+    );
+    transform:translateX(-100%);
+}
+.btn-predict:hover::after{
+    animation:shine .8s;
+}
+
+@keyframes shine{
+    to{transform:translateX(100%)}
+}
+
+/* result */
+.result{
+    margin-top:28px;
+    padding:22px;
+    border-radius:22px;
+    background:linear-gradient(135deg,#FAE1B8,#F3D18D);
+    border:1px solid #742E10;
+    text-align:center;
+    animation:fade .6s ease;
+}
+
+.result h2{
+    margin:0;
+    font-size:20px;
+    color:#742E10;
+}
+
+.confidence-bar{
+    margin-top:14px;
+    height:10px;
+    background:#FAE1B8;
+    border-radius:20px;
+    overflow:hidden;
+}
+
+.confidence-fill{
+    height:100%;
+    width:0%;
+    background:linear-gradient(135deg,#742E10,#9c3d18);
+    animation:load 1.2s forwards ease;
+}
+
+@keyframes load{
+    to{width:var(--confidence)}
+}
+
+.error{
+    background:#f8d7da;
+    border:1px solid #742E10;
+    color:#742E10;
+}
+
+@keyframes fade{
+    from{opacity:0;transform:translateY(12px)}
+    to{opacity:1;transform:translateY(0)}
+}
+</style>
+</head>
+
+<body>
+
+<div class="blob"></div>
+<div class="blob b2"></div>
+
+<div class="container">
+    <h1>AI Product Classifier</h1>
+    <div class="subtitle">Intelligent category prediction</div>
+
+    <form action="/predict" method="POST" id="form">
+
+        <div class="field">
+            <input type="number" name="quantity" id="qty" required placeholder=" ">
+            <label>Quantity</label>
+        </div>
+
+        <div class="field">
+            <input type="number" step="any" name="unit_price" id="price" required placeholder=" ">
+            <label>Unit Price (₹)</label>
+        </div>
+
+        <div class="field">
+            <input type="number" id="revenue" readonly placeholder=" ">
+            <label>Revenue (₹)</label>
+        </div>
+
+        <div class="field">
+            <input type="number" id="profit" readonly placeholder=" ">
+            <label>Profit (₹)</label>
+        </div>
+
+        <div class="field">
+            <input type="number" step="any" name="purchase_price" id="purchase_price" required placeholder=" ">
+            <label>Purchase Price (₹)</label>
+        </div>
+
+        <div class="actions">
+            <button type="button" class="btn-reset" onclick="resetForm()">Reset</button>
+            <button type="submit" class="btn-predict" id="predictBtn">Classify</button>
+        </div>
+
+    </form>
+
+    {% if result %}
+    <div class="result">
+        <h2>{{ result }}</h2>
+        <div class="confidence-bar">
+            <div class="confidence-fill" style="--confidence: {{ confidence }}%;"></div>
+        </div>
+        <div style="margin-top:10px;font-size:13px;">
+            Model confidence: {{ confidence }}%
+        </div>
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="result error">{{ error }}</div>
+    {% endif %}
+</div>
+
+<script>
+const qty = document.getElementById("qty");
+const price = document.getElementById("price");
+const purchase = document.getElementById("purchase_price");
+const revenue = document.getElementById("revenue");
+const profit = document.getElementById("profit");
+const predictBtn = document.getElementById("predictBtn");
+
+function updateCalc(){
+    const q = parseFloat(qty.value) || 0;
+    const p = parseFloat(price.value) || 0;
+    const cp = parseFloat(purchase.value) || 0;
+
+    const r = q * p;
+    const prof = r - (q * cp);
+
+    revenue.value = r ? r.toFixed(2) : "";
+    profit.value = r ? prof.toFixed(2) : "";
+}
+
+qty.addEventListener("input", updateCalc);
+price.addEventListener("input", updateCalc);
+purchase.addEventListener("input", updateCalc);
+
+document.getElementById("form").addEventListener("submit", () => {
+    predictBtn.classList.add("loading");
+    predictBtn.innerText = "Predicting...";
+});
+
+function resetForm(){
+    document.getElementById("form").reset();
+    revenue.value="";
+    profit.value="";
+    predictBtn.innerText = "Classify";
+    predictBtn.classList.remove("loading");
+}
+</script>
+
+</body>
+</html>
